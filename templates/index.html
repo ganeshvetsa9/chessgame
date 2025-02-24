@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>ChecK Master</title>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.10.1/bootstrap-table.min.js"></script>
+
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='libs/chessboard/css/chessboard-0.3.0.css') }}">
+        <link rel="shortcut icon" href="{{ url_for('static', filename='rook_favicon.ico') }}">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.10.1/bootstrap-table.min.css">
+
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.2/chess.js"></script>
+
+        <script defer src="{{ url_for('static', filename='libs/chessboard/js/chessboard-0.3.0.js') }}"></script>
+        <script defer src="{{ url_for('static', filename='libs/chessboard/js/chessboard-0.3.0.min.js') }}"></script>
+        <script defer src="{{ url_for('static', filename='scripts.js') }}"></script>
+
+        <script type="text/javascript">
+            $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+
+            var board, game;
+
+            function onDragStart(source, piece, position, orientation) {
+                if (game.game_over()) return false; // Don't allow moves if the game is over
+                if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
+                    (game.turn() === 'b' && piece.search(/^w/) !== -1)) {
+                    return false; // Only allow moves by the current player
+                }
+            }
+
+            function onDrop(source, target) {
+                var move = game.move({
+                    from: source,
+                    to: target,
+                    promotion: 'q' // Promote to queen by default
+                });
+
+                if (move === null) return 'snapback'; // Illegal move
+                updateStatus();
+            }
+
+            function onSnapEnd() {
+                board.position(game.fen()); // Update board position after the piece snap
+            }
+
+            function updateStatus() {
+                var status = '';
+
+                if (game.in_checkmate()) {
+                    status = 'Game over, ' + (game.turn() === 'w' ? 'Black' : 'White') + ' is in checkmate.';
+                } else if (game.in_draw()) {
+                    status = 'Game over, draw';
+                } else {
+                    status = (game.turn() === 'w' ? 'White' : 'Black') + ' to move';
+                    if (game.in_check()) {
+                        status += ', ' + (game.turn() === 'w' ? 'White' : 'Black') + ' is in check';
+                    }
+                }
+
+                $('#status').html(status);
+            }
+
+            function takeBack() {
+                game.undo();
+                board.position(game.fen());
+                updateStatus();
+            }
+
+            function newGame() {
+                game.reset();
+                board.start();
+                updateStatus();
+            }
+
+            $(document).ready(function() {
+                game = new Chess();
+
+                board = ChessBoard('board', {
+                    draggable: true,
+                    position: 'start',
+                    onDragStart: onDragStart,
+                    onDrop: onDrop,
+                    onSnapEnd: onSnapEnd
+                });
+
+                updateStatus();
+            });
+        </script>
+    </head>
+
+    <body>
+        <nav class="navbar navbar-default navbar-fixed-top">
+            <div class="container-fluid">
+                <h1 id="logo">ChecK Master</h1>
+            </div>
+        </nav>
+
+        <div class="container">
+            <div class="row">
+                <div class="col-xs-12 col-sm-6">
+                    <div id="mainWindow">
+                        <div id="piecesB"></div>
+                        <div id="board"></div>
+                        <div id="piecesW"></div>
+                    </div>
+                </div>
+
+                <div class="col-xs-12 col-sm-6">
+                    <div id="secondWindow">
+                        <h3><span id="status">White to move</span></h3>
+                        <div id="moveTable">
+                            <table class="table table-striped table-condensed" id="pgn">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>White</th>
+                                        <th>Black</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+
+                        <div id="controls">
+                            <form class="form-inline">
+                                <button type="button" class="btn btn-default" id="backBtn" onclick="takeBack();">Take Back</button>
+                                <button type="button" class="btn btn-default" id="reset" onclick="newGame();">New Game</button>
+                                <select class="form-control" id="sel1">
+                                    <option value="5">Depth: 5</option>
+                                    <option value="4">Depth: 4</option>
+                                    <option value="3">Depth: 3</option>
+                                    <option value="2">Depth: 2</option>
+                                    <option value="1">Depth: 1</option>
+                                </select>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer style="position: fixed; bottom: 10px; right: 10px; font-size: 14px; color: grey;">
+            Designed by Ganesh vetsa
+        </footer>
+    </body>
+</html>
